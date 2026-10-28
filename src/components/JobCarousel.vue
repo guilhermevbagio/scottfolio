@@ -178,6 +178,11 @@ onUnmounted(() => window.removeEventListener("keydown", onKey));
   transition: transform 280ms ease, background-color 280ms ease;
 }
 
+.carousel-dot:hover,
+.carousel-dot:focus-visible {
+  background: var(--color-ice);
+}
+
 .carousel-dot.is-on {
   background: var(--color-ice);
   transform: scale(1.35);

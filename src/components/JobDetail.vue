@@ -1,5 +1,5 @@
 <script setup>
-import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { jobs } from "../data/jobs";
 import JobCarousel from "./JobCarousel.vue";
 
@@ -55,6 +55,12 @@ function onBackdropClick(event) {
 function currentPane() {
   return stack.value.find((pane) => pane.phase !== "leave");
 }
+
+const jobIndex = computed(() => jobs.findIndex((job) => job.id === currentPane()?.job.id));
+const prevJob = computed(() => (jobIndex.value > 0 ? jobs[jobIndex.value - 1] : null));
+const nextJob = computed(() =>
+  jobIndex.value >= 0 && jobIndex.value < jobs.length - 1 ? jobs[jobIndex.value + 1] : null,
+);
 
 function go(dir) {
   if (busy) return;
@@ -176,7 +182,7 @@ onUnmounted(() => {
             <p class="job-line text-sm font-bold tracking-widest uppercase" style="--i: 0">{{ pane.job.client }}</p>
             <button
               type="button"
-              class="font-display shrink-0 border-4 border-blue px-4 py-2 text-2xl leading-none text-blue focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue"
+              class="job-close font-display shrink-0 border-4 border-blue px-4 py-2 text-2xl leading-none text-blue focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue"
               @click="requestClose"
             >
               Close
@@ -210,6 +216,26 @@ onUnmounted(() => {
         </div>
       </article>
     </div>
+    <button
+      v-if="prevJob"
+      type="button"
+      class="work-scroll is-up"
+      :aria-label="`Previous work, ${prevJob.title}`"
+      @click="go(-1)"
+    >
+      <span class="work-scroll-mark" aria-hidden="true"></span>
+      {{ prevJob.title }}
+    </button>
+    <button
+      v-if="nextJob"
+      type="button"
+      class="work-scroll is-down"
+      :aria-label="`Next work, ${nextJob.title}`"
+      @click="go(1)"
+    >
+      {{ nextJob.title }}
+      <span class="work-scroll-mark" aria-hidden="true"></span>
+    </button>
   </dialog>
 </template>
 
@@ -254,6 +280,72 @@ onUnmounted(() => {
   }
 }
 
+.job-close {
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.job-close:hover,
+.job-close:focus-visible {
+  background: var(--color-blue);
+  color: var(--color-ice);
+}
+
+.work-scroll {
+  position: absolute;
+  left: 50%;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  transform: translateX(-50%);
+  border: 3px solid var(--color-blue);
+  background: var(--color-ice);
+  color: var(--color-blue);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.4rem 0.65rem;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.work-scroll.is-up {
+  top: 0.85rem;
+}
+
+.work-scroll.is-down {
+  bottom: 0.85rem;
+}
+
+.work-scroll:hover,
+.work-scroll:focus-visible {
+  background: var(--color-blue);
+  color: var(--color-ice);
+}
+
+.work-scroll:focus-visible {
+  outline: 4px solid var(--color-blue);
+  outline-offset: 3px;
+}
+
+.work-scroll-mark {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-right: 3px solid currentColor;
+  border-bottom: 3px solid currentColor;
+}
+
+.work-scroll.is-up .work-scroll-mark {
+  transform: rotate(-135deg) translateY(-1px);
+}
+
+.work-scroll.is-down .work-scroll-mark {
+  transform: rotate(45deg) translateY(-1px);
+}
+
 .job-line {
   animation: job-line 420ms cubic-bezier(0.2, 0, 0, 1) both;
   animation-delay: calc(80ms + var(--i) * 50ms);
@@ -275,6 +367,11 @@ onUnmounted(() => {
   .job-pane.is-leave,
   .job-line {
     animation: none;
+  }
+
+  .job-close,
+  .work-scroll {
+    transition: none;
   }
 }
 </style>

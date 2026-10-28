@@ -66,6 +66,13 @@ onUnmounted(() => {
 
 .topbar a {
   color: inherit;
+  border-bottom: 3px solid transparent;
+  padding-bottom: 2px;
+  transition: border-color 180ms ease;
+}
+
+.topbar a:hover {
+  border-bottom-color: currentColor;
 }
 
 .topbar a:focus-visible {
@@ -90,7 +97,8 @@ onUnmounted(() => {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .topbar {
+  .topbar,
+  .topbar a {
     transition: none;
   }
 }
