@@ -11,6 +11,11 @@ export const jobs = [
     tags: ["Poster", "Print", "Character"],
     image: "",
     swatch: "#6ec8cf",
+    images: [
+      { src: "", swatch: "#6ec8cf", label: "Front" },
+      { src: "", swatch: "#4fa7a9", label: "The wave" },
+      { src: "", swatch: "#d7eef8", label: "Detail" },
+    ],
   },
   {
     id: "night-market",
@@ -24,6 +29,11 @@ export const jobs = [
     tags: ["Cover", "Editorial", "Crowd"],
     image: "",
     swatch: "#87c3e6",
+    images: [
+      { src: "", swatch: "#87c3e6", label: "Cover" },
+      { src: "", swatch: "#6ec8cf", label: "Stalls" },
+      { src: "", swatch: "#5c8fb8", label: "Crowd" },
+    ],
   },
   {
     id: "station-mascot",
@@ -37,6 +47,11 @@ export const jobs = [
     tags: ["Character", "Mascot", "Wayfinding"],
     image: "",
     swatch: "#4fa7a9",
+    images: [
+      { src: "", swatch: "#4fa7a9", label: "Front" },
+      { src: "", swatch: "#87c3e6", label: "Side" },
+      { src: "", swatch: "#6ec8cf", label: "Poses" },
+    ],
   },
   {
     id: "salt-rye",
@@ -50,6 +65,11 @@ export const jobs = [
     tags: ["Lettering", "Menu", "Print"],
     image: "",
     swatch: "#d7eef8",
+    images: [
+      { src: "", swatch: "#d7eef8", label: "Cover" },
+      { src: "", swatch: "#87c3e6", label: "Spread" },
+      { src: "", swatch: "#4fa7a9", label: "Fish" },
+    ],
   },
   {
     id: "glass-room",
@@ -63,6 +83,11 @@ export const jobs = [
     tags: ["Mural", "Storefront", "Study"],
     image: "",
     swatch: "#7eb6d4",
+    images: [
+      { src: "", swatch: "#7eb6d4", label: "Window" },
+      { src: "", swatch: "#6ec8cf", label: "Cat" },
+      { src: "", swatch: "#d7eef8", label: "Awning" },
+    ],
   },
   {
     id: "low-tide",
@@ -76,5 +101,10 @@ export const jobs = [
     tags: ["Sleeve", "Music", "Square"],
     image: "",
     swatch: "#9fd0c8",
+    images: [
+      { src: "", swatch: "#9fd0c8", label: "Front" },
+      { src: "", swatch: "#5c8fb8", label: "Back" },
+      { src: "", swatch: "#87c3e6", label: "Waves" },
+    ],
   },
 ]

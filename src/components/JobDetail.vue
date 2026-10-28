@@ -1,5 +1,7 @@
 <script setup>
-import { nextTick, ref, watch } from "vue";
+import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { jobs } from "../data/jobs";
+import JobCarousel from "./JobCarousel.vue";
 
 const props = defineProps({
   job: { type: Object, default: null },
@@ -7,18 +9,35 @@ const props = defineProps({
 
 const emit = defineEmits(["close"]);
 const dialog = ref(null);
-const shown = ref(null);
+const stack = ref([]);
+const direction = ref(1);
+const reduce =
+  typeof window !== "undefined" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+let busy = false;
+let acc = 0;
+let settleTimer = 0;
+let token = 0;
+let startY = 0;
+let tracking = false;
 
 watch(
   () => props.job,
   async (job) => {
-    if (job) shown.value = job;
+    if (job) {
+      token += 1;
+      busy = false;
+      acc = 0;
+      stack.value = [{ job, phase: "rest", key: `${job.id}-${token}` }];
+    }
     await nextTick();
     const dialogEl = dialog.value;
     if (!dialogEl) return;
     if (job && !dialogEl.open) dialogEl.showModal();
     else if (!job && dialogEl.open) dialogEl.close();
   },
+  { immediate: true },
 );
 
 function requestClose() {
@@ -32,6 +51,101 @@ function onDialogClose() {
 function onBackdropClick(event) {
   if (event.target === dialog.value) requestClose();
 }
+
+function currentPane() {
+  return stack.value.find((pane) => pane.phase !== "leave");
+}
+
+function go(dir) {
+  if (busy) return;
+  const current = currentPane();
+  if (!current) return;
+  const index = jobs.findIndex((job) => job.id === current.job.id);
+  const next = jobs[index + dir];
+  if (!next) return;
+
+  if (reduce) {
+    token += 1;
+    stack.value = [{ job: next, phase: "rest", key: `${next.id}-${token}` }];
+    return;
+  }
+
+  direction.value = dir;
+  busy = true;
+  token += 1;
+  current.phase = "leave";
+  stack.value = [
+    ...stack.value,
+    { job: next, phase: "enter", key: `${next.id}-${token}` },
+  ];
+  clearTimeout(settleTimer);
+  settleTimer = setTimeout(() => {
+    stack.value = stack.value
+      .filter((pane) => pane.phase !== "leave")
+      .map((pane) => ({ ...pane, phase: "rest" }));
+    busy = false;
+  }, 480);
+}
+
+function onWheel(event) {
+  const dialogEl = dialog.value;
+  if (!dialogEl?.open) return;
+  event.preventDefault();
+  if (busy) {
+    acc = 0;
+    return;
+  }
+  const delta =
+    event.deltaMode === 1
+      ? event.deltaY * 16
+      : event.deltaMode === 2
+        ? event.deltaY * window.innerHeight
+        : event.deltaY;
+  if (Math.abs(delta) < Math.abs(event.deltaX)) return;
+  acc += delta;
+  if (Math.abs(acc) < 60) return;
+  const dir = acc > 0 ? 1 : -1;
+  acc = 0;
+  go(dir);
+}
+
+function onKey(event) {
+  const dialogEl = dialog.value;
+  if (!dialogEl?.open || !dialogEl.contains(document.activeElement)) return;
+  if (event.key === "ArrowDown") {
+    event.preventDefault();
+    go(1);
+  }
+  if (event.key === "ArrowUp") {
+    event.preventDefault();
+    go(-1);
+  }
+}
+
+function onPointerDown(event) {
+  if (event.pointerType === "mouse" || event.target.closest("button")) return;
+  tracking = true;
+  startY = event.clientY;
+}
+
+function onPointerUp(event) {
+  if (!tracking) return;
+  tracking = false;
+  const dy = event.clientY - startY;
+  if (Math.abs(dy) < 56) return;
+  go(dy < 0 ? 1 : -1);
+}
+
+onMounted(() => {
+  dialog.value?.addEventListener("wheel", onWheel, { passive: false, capture: true });
+  window.addEventListener("keydown", onKey);
+});
+
+onUnmounted(() => {
+  clearTimeout(settleTimer);
+  dialog.value?.removeEventListener("wheel", onWheel, { capture: true });
+  window.removeEventListener("keydown", onKey);
+});
 </script>
 
 <template>
@@ -41,49 +155,126 @@ function onBackdropClick(event) {
     aria-labelledby="job-detail-title"
     @close="onDialogClose"
     @click="onBackdropClick"
+    @pointerdown="onPointerDown"
+    @pointerup="onPointerUp"
   >
-    <article v-if="shown" class="grid md:grid-cols-2">
-      <div class="relative min-h-48 border-b-4 border-blue md:border-r-4 md:border-b-0">
-        <img
-          v-if="shown.image"
-          :src="shown.image"
-          :alt="shown.title"
-          class="h-full w-full object-cover"
-        />
-        <div v-else class="h-full min-h-48 w-full" :style="{ backgroundColor: shown.swatch }" />
-      </div>
-      <div class="flex flex-col gap-4 p-5 sm:p-6">
-        <div class="flex items-start justify-between gap-4">
-          <p class="text-xs font-bold tracking-widest uppercase">{{ shown.client }}</p>
-          <button
-            type="button"
-            class="font-display shrink-0 border-4 border-blue px-3 py-1 text-lg leading-none text-blue focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue"
-            @click="requestClose"
-          >
-            Close
-          </button>
+    <div class="job-stage" :style="{ '--dir': direction }">
+      <article
+        v-for="pane in stack"
+        :key="pane.key"
+        class="job-pane grid h-full md:grid-cols-2"
+        :class="{
+          'is-enter': pane.phase === 'enter',
+          'is-leave': pane.phase === 'leave',
+        }"
+      >
+        <div class="relative min-h-[42vh] border-b-4 border-blue md:min-h-0 md:border-r-4 md:border-b-0">
+          <JobCarousel :job="pane.job" />
         </div>
-        <h2 id="job-detail-title" class="font-display text-4xl leading-none sm:text-5xl">
-          {{ shown.title }}
-        </h2>
-        <p class="text-sm">{{ shown.year }}</p>
-        <dl class="grid grid-cols-[6.5rem_1fr] gap-x-3 gap-y-2 text-sm">
-          <dt class="font-bold tracking-wide uppercase">Role</dt>
-          <dd>{{ shown.role }}</dd>
-          <dt class="font-bold tracking-wide uppercase">Deliverable</dt>
-          <dd>{{ shown.deliverable }}</dd>
-        </dl>
-        <p class="text-base leading-relaxed">{{ shown.summary }}</p>
-        <ul class="flex flex-wrap gap-2">
-          <li
-            v-for="tag in shown.tags"
-            :key="tag"
-            class="border-4 border-blue px-2 py-1 text-xs font-bold tracking-wide uppercase"
+        <div class="job-copy flex min-w-0 flex-col justify-center gap-6 overflow-auto p-6 sm:p-10 lg:p-14">
+          <div class="flex items-start justify-between gap-4">
+            <p class="job-line text-sm font-bold tracking-widest uppercase" style="--i: 0">{{ pane.job.client }}</p>
+            <button
+              type="button"
+              class="font-display shrink-0 border-4 border-blue px-4 py-2 text-2xl leading-none text-blue focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-blue"
+              @click="requestClose"
+            >
+              Close
+            </button>
+          </div>
+          <h2
+            :id="pane.phase === 'leave' ? undefined : 'job-detail-title'"
+            class="job-line font-display text-[clamp(3.25rem,7vw,6.5rem)] leading-[0.85] break-words"
+            style="--i: 1"
           >
-            {{ tag }}
-          </li>
-        </ul>
-      </div>
-    </article>
+            {{ pane.job.title }}
+          </h2>
+          <p class="job-line text-lg" style="--i: 2">{{ pane.job.year }}</p>
+          <dl class="job-line grid grid-cols-[7.5rem_1fr] gap-x-4 gap-y-3 text-lg" style="--i: 3">
+            <dt class="font-bold tracking-wide uppercase">Role</dt>
+            <dd>{{ pane.job.role }}</dd>
+            <dt class="font-bold tracking-wide uppercase">Deliverable</dt>
+            <dd>{{ pane.job.deliverable }}</dd>
+          </dl>
+          <p class="job-line max-w-xl text-xl leading-relaxed" style="--i: 4">{{ pane.job.summary }}</p>
+          <ul class="flex flex-wrap gap-3">
+            <li
+              v-for="(tag, i) in pane.job.tags"
+              :key="tag"
+              class="job-line border-4 border-blue px-3 py-2 font-display text-lg leading-none"
+              :style="{ '--i': 5 + i }"
+            >
+              {{ tag }}
+            </li>
+          </ul>
+        </div>
+      </article>
+    </div>
   </dialog>
 </template>
+
+<style scoped>
+.job-stage {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+.job-pane {
+  position: absolute;
+  inset: 0;
+  background: var(--color-ice);
+}
+
+.job-pane.is-enter {
+  z-index: 2;
+  animation: job-slide-in 460ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.job-pane.is-leave {
+  z-index: 1;
+  animation: job-slide-out 460ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+@keyframes job-slide-in {
+  from {
+    transform: translate3d(0, calc(var(--dir) * 100%), 0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+@keyframes job-slide-out {
+  from {
+    transform: none;
+  }
+  to {
+    transform: translate3d(0, calc(var(--dir) * -100%), 0);
+  }
+}
+
+.job-line {
+  animation: job-line 420ms cubic-bezier(0.2, 0, 0, 1) both;
+  animation-delay: calc(80ms + var(--i) * 50ms);
+}
+
+@keyframes job-line {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .job-pane.is-enter,
+  .job-pane.is-leave,
+  .job-line {
+    animation: none;
+  }
+}
+</style>

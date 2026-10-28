@@ -108,10 +108,10 @@
 /* Short slide-in. Reduced motion shows everything immediately. */
 .reveal {
   opacity: 0;
-  transform: translateY(12px);
+  transform: translateY(28px);
   transition:
-    opacity 500ms ease,
-    transform 500ms ease;
+    opacity 700ms ease,
+    transform 700ms ease;
 }
 
 .reveal.is-visible {
@@ -120,11 +120,13 @@
 }
 
 .job-detail {
-  width: min(42rem, calc(100% - 2rem));
-  max-height: min(90dvh, 46rem);
+  width: calc(100vw - 1.5rem);
+  height: calc(100dvh - 1.5rem);
+  max-width: none;
+  max-height: none;
   margin: auto;
   padding: 0;
-  overflow: auto;
+  overflow: hidden;
   border: 4px solid var(--color-blue);
   background: var(--color-ice);
   color: var(--color-black);
@@ -132,6 +134,34 @@
 
 .job-detail::backdrop {
   background: #1f4d6e;
+}
+
+.job-detail[open] {
+  animation: job-open 320ms cubic-bezier(0.2, 0, 0, 1) both;
+}
+
+.job-detail[open]::backdrop {
+  animation: job-backdrop 280ms ease both;
+}
+
+@keyframes job-open {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes job-backdrop {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -143,5 +173,10 @@
     opacity: 1;
     transform: none;
     transition: none;
+  }
+
+  .job-detail[open],
+  .job-detail[open]::backdrop {
+    animation: none;
   }
 }
